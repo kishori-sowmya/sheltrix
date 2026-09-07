@@ -104,6 +104,7 @@ def simulate_shelter(params: Dict[str, Any], climate_dict: Dict[str, Any] = None
     solar_gain_total = 0.0
     ventilation_loss_total = 0.0
     heating_energy_total = 0.0
+    cooling_energy_total = 0.0
 
     for day in range(SPINUP_DAYS):
         is_final_day = (day == SPINUP_DAYS - 1)
@@ -134,26 +135,33 @@ def simulate_shelter(params: Dict[str, Any], climate_dict: Dict[str, Any] = None
                 effective_C = C_total + (pcm_latent_J / 4.0)
 
             dT = (Q_net * TIMESTEP_S) / effective_C
-            T_new = T_curr + dT
+            T_uncontrolled = T_curr + dT
 
-            # Heating system setpoint maintenance
+            # Heating & Cooling HVAC setpoint energy calculations
             heating_wh = 0.0
-            if T_new < COMFORT_LOW:
-                required_dT = COMFORT_LOW - T_new
+            cooling_wh = 0.0
+
+            if T_uncontrolled < COMFORT_LOW:
+                required_dT = COMFORT_LOW - T_uncontrolled
                 Q_heater = required_dT * effective_C / TIMESTEP_S
                 heating_wh = Q_heater * (TIMESTEP_S / 3600.0)
-                T_new = COMFORT_LOW
+            elif T_uncontrolled > COMFORT_HIGH:
+                excess_dT = T_uncontrolled - COMFORT_HIGH
+                Q_cooler = excess_dT * effective_C / TIMESTEP_S
+                cooling_wh = Q_cooler * (TIMESTEP_S / 3600.0)
 
-            T_curr = T_new
+            T_curr = T_uncontrolled
 
             if is_final_day:
                 hourly_history[h] = T_curr
                 heat_loss_total += max(0.0, -Q_cond_total) * (TIMESTEP_S / 3600.0)
-                solar_gain_total += Q_solar_total * (TIMESTEP_S / 3600.0)
+                solar_gain_total += max(0.0, Q_solar_total) * (TIMESTEP_S / 3600.0)
                 ventilation_loss_total += max(0.0, -Q_vent) * (TIMESTEP_S / 3600.0)
                 heating_energy_total += heating_wh
+                cooling_energy_total += cooling_wh
 
-    comfort_hours = int(np.sum((hourly_history >= COMFORT_LOW) & (hourly_history <= COMFORT_HIGH + 4.0)))
+    comfort_hours = int(np.sum((hourly_history >= COMFORT_LOW) & (hourly_history <= COMFORT_HIGH)))
+    total_hvac_energy_kWh = (heating_energy_total + cooling_energy_total) / 1000.0
 
     return {
         "indoor_temp_mean": float(np.mean(hourly_history)),
@@ -165,6 +173,8 @@ def simulate_shelter(params: Dict[str, Any], climate_dict: Dict[str, Any] = None
         "total_solar_gain_kWh": solar_gain_total / 1000.0,
         "ventilation_loss_kWh": ventilation_loss_total / 1000.0,
         "heating_energy_required_kWh": heating_energy_total / 1000.0,
+        "cooling_energy_required_kWh": cooling_energy_total / 1000.0,
+        "total_hvac_energy_kWh": total_hvac_energy_kWh,
         "hourly_indoor_temp": hourly_history.tolist(),
         "fidelity_tier": "tier1_rc_physics",
         "assumptions": [

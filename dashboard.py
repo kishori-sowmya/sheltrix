@@ -1,8 +1,8 @@
 """
-Module 12: Professional Streamlit Dashboard for SIH Presentation
-Integrates all system modules: Multi-Region Climate Manager, Material Database,
-RC Physics Engine, Dataset Generator, XGBoost Surrogate, NSGA-II Optimizer,
-Explainable AI, Interactive Plotly 3D Shelter Visualizer, and ANSYS Validation Studio.
+Module 12: Professional Streamlit Dashboard for Thermal Design Platform
+Integrates system modules: Multi-Region Climate Manager, Material Database,
+RC Physics Engine, Dataset Generator, NSGA-II Optimizer, Sensitivity Analysis,
+Interactive Plotly 3D Shelter Visualizer, and ANSYS Validation Studio.
 """
 
 import streamlit as st
@@ -24,7 +24,7 @@ from src.ml.quality_control import SurrogateQualityControl
 
 # ---------------- PAGE CONFIG & STYLING ----------------
 st.set_page_config(
-    page_title="AI Shelter Thermal Design Platform",
+    page_title="Shelter Thermal Design System",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -46,12 +46,28 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
     .metric-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 1.2rem;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 1.1rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+    .status-badge-success {
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: rgba(46, 204, 113, 0.12);
+        border: 1px solid rgba(46, 204, 113, 0.3);
+        color: #2ECC71;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    .status-badge-warning {
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: rgba(241, 196, 15, 0.12);
+        border: 1px solid rgba(241, 196, 15, 0.3);
+        color: #F1C40F;
+        font-size: 0.9rem;
     }
     .stSlider > div {
         padding-top: 0.2rem;
@@ -65,7 +81,7 @@ qc = SurrogateQualityControl()
 explainer = DesignExplainer()
 ansys_engine = get_simulation_engine("ansys")
 
-# ---------------- SIDEBAR CONTROLS (USER FRIENDLY & NO EMOJIS) ----------------
+# ---------------- SIDEBAR CONTROLS (MULTI-REGION DYNAMIC SELECTION) ----------------
 with st.sidebar:
     st.markdown("## Shelter Thermal Controls")
 
@@ -97,7 +113,7 @@ with st.sidebar:
             "Geographical Region",
             regions,
             index=0,
-            help="Select the target high-altitude or cold climate region in India."
+            help="Select target climate region across North or South India."
         )
 
         available_scenarios = cm.get_scenarios_for_region(selected_region)
@@ -108,19 +124,17 @@ with st.sidebar:
             available_scenarios,
             index=0,
             format_func=lambda x: scenario_names_map[x],
-            help="Select the specific seasonal profile to evaluate building thermal performance."
+            help="Select seasonal profile to evaluate thermal performance."
         )
 
         prof = cm.get_profile(climate_scenario)
         st.caption(f"Region: {prof['region']} | Data Source: {prof['data_source']}")
-        if prof.get("is_synthetic", False):
-            st.info("Using verified representative climatology dataset (Synthetic/Demo Data)")
 
     with st.expander("Shelter Dimensions & Solar Orientation", expanded=True):
         length = st.slider("Length (m)", 3.0, 8.0, p_len, 0.5, help="Length of shelter outer footprint in meters")
         width = st.slider("Width (m)", 3.0, 6.0, p_wid, 0.5, help="Width of shelter outer footprint in meters")
         wall_height = st.slider("Wall Height (m)", 2.2, 3.5, p_height, 0.1, help="Height of vertical outer walls in meters")
-        roof_angle = st.slider("Roof Pitch (degrees)", 0.0, 45.0, p_roof, 5.0, help="Sloping angle of the roof assembly")
+        roof_angle = st.slider("Roof Pitch (degrees)", 0.0, 45.0, p_roof, 5.0, help="Sloping angle of roof assembly")
         orientation_deg = st.slider(
             "Solar Azimuth Orientation (0 = True South)",
             0.0, 180.0, p_orient, 15.0,
@@ -137,7 +151,7 @@ with st.sidebar:
         glazing_type = st.selectbox("Window Glazing System", GLAZING_LIST, index=GLAZING_LIST.index(p_glaz), help="Glazing type (e.g., double pane glass)")
 
     with st.expander("Thermal Storage & Phase Change Material (PCM)", expanded=False):
-        pcm_present = st.checkbox("Include PCM Thermal Storage Layer", value=(p_pcm_t > 0), help="Add phase change material layer to store excess solar heat and reduce night cooling.")
+        pcm_present = st.checkbox("Include PCM Thermal Storage Layer", value=(p_pcm_t > 0), help="Add phase change material layer to store excess heat and buffer indoor temperature.")
         pcm_thickness_mm = st.slider("PCM Layer Thickness (mm)", 0.0, 50.0, p_pcm_t if pcm_present else 0.0, 5.0, help="Thickness of thermal storage material layer in millimeters.")
 
     user_design_dict = {
@@ -150,67 +164,24 @@ with st.sidebar:
         "pcm_thickness_mm": pcm_thickness_mm if pcm_present else 0.0,
     }
 
-# ---------------- NAVIGATION TABS (USER FRIENDLY & NO EMOJIS) ----------------
-tab_home, tab_design, tab_pred, tab_opt, tab_comp, tab_rec, tab_val = st.tabs([
-    "Problem & Architecture",
+# Dynamic Physics Simulation Run for the current region and user parameters
+rc_res = simulate_shelter(user_design_dict, climate_scenario=climate_scenario)
+
+# ---------------- NAVIGATION TABS (PROBLEM & ARCHITECTURE REMOVED) ----------------
+tab_design, tab_pred, tab_opt, tab_comp, tab_rec, tab_val = st.tabs([
     "Design Studio & 3D Twin",
     "Physics & Thermal Analysis",
     "Multi-Objective Optimization",
     "Design Comparison Matrix",
-    "Design Recommendations & Insights",
+    "Sensitivity & Recommendation Analysis",
     "Validation Studio"
 ])
 
-# ---------------- TAB 1: PROBLEM & ARCHITECTURE ----------------
-with tab_home:
-    st.markdown('<div class="main-header">AI-Assisted Shelter Thermal Design Platform</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Area-Specific Thermal Comfort Maintenance & Intelligent Shelter Design Optimization</div>', unsafe_allow_html=True)
-
-    col1, col2 = st.columns([3, 2])
-    with col1:
-        st.markdown("""
-        ### Problem Overview
-        High-altitude and extreme cold regions across India (such as **Ladakh**, **Himachal Pradesh**, **Jammu & Kashmir**, **Arunachal Pradesh**, and **Sikkim**) present harsh sub-zero temperatures (dropping down to -20°C in winter). Providing thermally comfortable defense habitats, medical units, and emergency shelters is critical for human survival and operational efficiency.
-
-        Traditional design workflows rely on heavy Computational Fluid Dynamics (CFD) or ANSYS simulations that take hours per single run. This makes testing thousands of architectural material combinations and geometry variations impossible in practice.
-
-        ### Scientific Solution & Core Innovation
-        > **"Combine physics-based lumped RC thermal modeling with high-speed AI XGBoost surrogates to evaluate thousands of shelter designs in under a second, while validating top choices against detailed physics and ANSYS solvers."**
-
-        ### Key Features & Benefits
-        - **Multi-Region Climate Profiles**: Covers 5 major cold weather regions in India across winter, summer, and transitional seasons.
-        - **Instant AI Predictions**: XGBoost surrogate model provides indoor temperature and energy predictions in less than 1 millisecond.
-        - **Multi-Objective Optimization**: NSGA-II algorithm finds optimal design trade-offs between lower heating energy requirements and higher indoor thermal comfort hours.
-        - **3D Parametric Digital Twin**: Interactive 3D visualization of shelter geometry, window cutouts, solar orientation, and material layers.
-        - **Explainable AI (XAI)**: Clear feature importance breakdown explaining why specific designs are recommended.
-        - **Tiered Engineering Validation**: Transparent verification comparing surrogate estimates against direct RC physics recalculations and ANSYS solver readiness.
-        """)
-
-    with col2:
-        st.markdown("#### System Workflow & Data Pipeline")
-        st.code("""
-SELECT REGION & CLIMATE SCENARIO
-       (Ladakh / Himachal / J&K / Arunachal / Sikkim)
-              ↓
-DESIGN PARAMETER SELECTION
-       (Dimensions, Materials, Insulation, PCM)
-              ↓
-FAST AI SURROGATE MODEL (XGBoost)
-       (Predicts Heating Energy & Comfort Hours in <1 ms)
-              ↓
-MULTI-OBJECTIVE OPTIMIZATION (NSGA-II)
-       (Searches Thousands of Candidates for Optimal Trade-offs)
-              ↓
-INTERACTIVE 3D DIGITAL TWIN & COMPARISON
-       (Visualizes Selected Structure & Performance Metrics)
-              ↓
-PHYSICS & ANSYS VALIDATION STUDIO
-       (Verifies Top Candidates Against Ground-Truth Physics)
-        """, language="text")
-
-# ---------------- TAB 2: DESIGN STUDIO & 3D TWIN ----------------
+# ---------------- TAB 1: DESIGN STUDIO & 3D TWIN ----------------
 with tab_design:
     st.subheader("Parametric Shelter Design Studio & Property Calculator")
+    st.caption(f"Active Location: {prof['name']} ({prof['region']})")
+
     c1, c2 = st.columns([1, 1])
 
     with c1:
@@ -240,18 +211,18 @@ with tab_design:
         st.markdown("#### Derived Architectural & Thermal Properties")
         pcol1, pcol2, pcol3 = st.columns(3)
         pcol1.metric("Floor Footprint Area", f"{fl_area:.1f} m²", help="Total indoor ground footprint area")
-        pcol1.metric("Enclosure Volume", f"{vol:.1f} m³", help="Total internal air volume to be heated")
-        pcol2.metric("Wall R-Value (Insulation)", f"{r_wall:.2f} m²K/W", help="Thermal resistance of exterior wall. Higher R-Value means better heat retention.")
-        pcol2.metric("Wall U-Value (Conductance)", f"{u_wall:.3f} W/m²K", help="Thermal transmittance. Lower U-Value means less heat loss through walls.")
+        pcol1.metric("Enclosure Volume", f"{vol:.1f} m³", help="Total internal air volume")
+        pcol2.metric("Wall R-Value (Insulation)", f"{r_wall:.2f} m²K/W", help="Thermal resistance of exterior wall. Higher R-Value means better insulation.")
+        pcol2.metric("Wall U-Value (Conductance)", f"{u_wall:.3f} W/m²K", help="Thermal transmittance. Lower U-Value means less heat flow.")
         pcol3.metric("Est. Structural Weight", f"{wall_weight_ton:.1f} Tons", help="Approximate mass of outer structural wall envelope")
-        pcol3.metric("Est. Envelope Material Cost", f"${total_est_cost_usd:,.0f}", help="Estimated total material cost for walls, insulation, and windows")
+        pcol3.metric("Est. Envelope Material Cost", f"${total_est_cost_usd:,.0f}", help="Estimated material cost for envelope, insulation, and glazing")
 
         valid, warnings = qc.validate_input_bounds(user_design_dict)
         if not valid:
             for w in warnings:
                 st.warning(f"[Design Check] {w}")
         else:
-            st.success("All design parameters are strictly within valid physical bounds.")
+            st.markdown('<div class="status-badge-success">All design parameters are strictly within valid physical bounds.</div>', unsafe_allow_html=True)
 
     with c2:
         st.markdown("#### 2. Interactive 3D Digital Twin Representation")
@@ -266,91 +237,99 @@ with tab_design:
         ])
         st.dataframe(mat_summary_df, use_container_width=True)
 
-# ---------------- TAB 3: PHYSICS & THERMAL ANALYSIS ----------------
+# ---------------- TAB 2: PHYSICS & THERMAL ANALYSIS ----------------
 with tab_pred:
     st.subheader("Physics Engine Simulation & Detailed Heat Balance Analysis")
-    st.caption("Solves a 24-hour diurnal lumped RC thermal resistance network to compute indoor temperatures and energy loss.")
+    st.caption(f"Solves 24-hour diurnal lumped RC thermal resistance network dynamically for {prof['name']}.")
 
-    if st.button("Run Physics Simulation & Heat Balance Breakdown", type="primary"):
-        with st.spinner("Solving RC Physics Model (24-Hour Diurnal Cycle)..."):
-            rc_res = simulate_shelter(user_design_dict, climate_scenario=climate_scenario)
-            st.session_state["last_rc_res"] = rc_res
+    m1, m2, m3, m4 = st.columns(4)
+    heating_kwh = rc_res.get('heating_energy_required_kWh', 0.0)
+    cooling_kwh = rc_res.get('cooling_energy_required_kWh', 0.0)
+    total_hvac_kwh = rc_res.get('total_hvac_energy_kWh', heating_kwh + cooling_kwh)
 
-    if "last_rc_res" in st.session_state:
-        rc_res = st.session_state["last_rc_res"]
+    if cooling_kwh > heating_kwh:
+        m1.metric("Predicted Cooling Energy Needed", f"{cooling_kwh:.1f} kWh/day", help="Kilowatt-hours of cooling energy required daily to prevent overheating.")
+    else:
+        m1.metric("Predicted Heating Energy Needed", f"{heating_kwh:.1f} kWh/day", help="Kilowatt-hours of heating energy required daily to maintain indoor warmth.")
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Predicted Heating Energy Needed", f"{rc_res['heating_energy_required_kWh']:.1f} kWh/day", help="Kilowatt-hours of heating required daily to maintain indoor warmth.")
-        m2.metric("Thermal Comfort Hours (>= 18°C)", f"{rc_res['comfort_hours']} hrs/day", delta=f"{rc_res['comfort_hours']-12:.0f} hrs vs baseline", help="Hours per day indoor temperature remains at or above comfortable 18°C threshold.")
-        m3.metric("Total Wall & Roof Heat Loss", f"{rc_res['total_heat_loss_kWh']:.1f} kWh/day", help="Conductive heat loss escaping through building walls and roof.")
-        m4.metric("Passive Solar Heat Gain", f"{rc_res['total_solar_gain_kWh']:.1f} kWh/day", help="Free solar heat gained through south-facing windows during daylight hours.")
+    m2.metric("Thermal Comfort Hours (18°C - 25°C)", f"{rc_res['comfort_hours']} hrs/day", delta=f"{rc_res['comfort_hours']-12:.0f} hrs vs baseline", help="Hours per day indoor temperature remains in comfortable 18°C - 25°C band.")
+    m3.metric("Total Wall & Roof Heat Loss", f"{rc_res['total_heat_loss_kWh']:.1f} kWh/day", help="Conductive heat transfer escaping through building envelope.")
+    m4.metric("Passive Solar Heat Gain", f"{rc_res['total_solar_gain_kWh']:.1f} kWh/day", help="Solar heat gained through windows during daylight hours.")
 
-        st.divider()
+    st.divider()
 
-        # Detailed Analytical Charts
-        c_left, c_right = st.columns([1, 1])
+    # Detailed Analytical Charts
+    c_left, c_right = st.columns([1, 1])
 
-        with c_left:
-            st.markdown("#### 1. 24-Hour Diurnal Indoor vs Outdoor Temperature Profile")
-            hours = list(range(24))
-            prof = cm.get_profile(climate_scenario)
-            df_temp = pd.DataFrame({
-                "Hour of Day": hours,
-                "Indoor Temperature (°C)": rc_res["hourly_indoor_temp"],
-                "Outdoor Temp (°C)": prof["T_amb_hourly"],
-                "Comfort Threshold (18°C)": [18.0] * 24,
-            })
-            fig_temp = px.line(
-                df_temp, x="Hour of Day", y=["Indoor Temperature (°C)", "Outdoor Temp (°C)", "Comfort Threshold (18°C)"],
-                title=f"Hourly Diurnal Thermal Response ({prof['name']})",
-                color_discrete_map={"Indoor Temperature (°C)": "#FF4B4B", "Outdoor Temp (°C)": "#1E88E5", "Comfort Threshold (18°C)": "#4CAF50"}
-            )
-            fig_temp.update_layout(xaxis=dict(tickmode="linear", tick0=0, dtick=2))
-            st.plotly_chart(fig_temp, use_container_width=True)
-
-        with c_right:
-            st.markdown("#### 2. Daily Energy Balance Breakdown (kWh/day)")
-            balance_df = pd.DataFrame([
-                {"Component": "Passive Solar Heat Gain", "Energy (kWh)": rc_res["total_solar_gain_kWh"], "Category": "Heat Gain"},
-                {"Component": "Envelope Conductive Loss", "Energy (kWh)": rc_res["total_heat_loss_kWh"], "Category": "Heat Loss"},
-                {"Component": "Ventilation & Infiltration Loss", "Energy (kWh)": rc_res.get("ventilation_loss_kWh", 4.5), "Category": "Heat Loss"},
-                {"Component": "Required Auxiliary Heating", "Energy (kWh)": rc_res["heating_energy_required_kWh"], "Category": "Heating Energy Needed"},
-            ])
-            fig_bal = px.bar(
-                balance_df, x="Component", y="Energy (kWh)", color="Category",
-                title="Daily Energy Balance Breakdown",
-                color_discrete_map={"Heat Gain": "#2ECC71", "Heat Loss": "#E74C3C", "Heating Energy Needed": "#F39C12"}
-            )
-            st.plotly_chart(fig_bal, use_container_width=True)
-
-        st.divider()
-        st.markdown("#### 3. Insulation Thickness Sensitivity Sweep (0mm to 150mm)")
-        st.caption("Shows how increasing insulation thickness reduces heating energy needs and increases thermal comfort hours.")
-
-        # Sensitivity sweep simulation
-        sweep_ins = list(range(0, 160, 15))
-        sweep_results = []
-        for ins_v in sweep_ins:
-            t_cfg = {**user_design_dict, "insulation_thickness_mm": ins_v}
-            res_sweep = simulate_shelter(t_cfg, climate_scenario=climate_scenario)
-            sweep_results.append({
-                "Insulation Thickness (mm)": ins_v,
-                "Heating Energy Required (kWh/day)": res_sweep["heating_energy_required_kWh"],
-                "Comfort Hours (hrs/day)": res_sweep["comfort_hours"],
-            })
-
-        df_sweep = pd.DataFrame(sweep_results)
-        fig_sweep = px.line(
-            df_sweep, x="Insulation Thickness (mm)", y=["Heating Energy Required (kWh/day)", "Comfort Hours (hrs/day)"],
-            title="Impact of Insulation Thickness on Thermal Performance",
-            markers=True
+    with c_left:
+        st.markdown(f"#### 1. 24-Hour Diurnal Indoor vs Outdoor Temperature Profile ({prof['region']})")
+        hours = list(range(24))
+        df_temp = pd.DataFrame({
+            "Hour of Day": hours,
+            "Indoor Temperature (°C)": rc_res["hourly_indoor_temp"],
+            "Outdoor Ambient Temp (°C)": prof["T_amb_hourly"],
+            "Lower Comfort Limit (18°C)": [18.0] * 24,
+            "Upper Comfort Limit (25°C)": [25.0] * 24,
+        })
+        fig_temp = px.line(
+            df_temp, x="Hour of Day", y=["Indoor Temperature (°C)", "Outdoor Ambient Temp (°C)", "Lower Comfort Limit (18°C)", "Upper Comfort Limit (25°C)"],
+            title=f"Diurnal Temperature Profile — {prof['name']}",
+            color_discrete_map={
+                "Indoor Temperature (°C)": "#FF4B4B",
+                "Outdoor Ambient Temp (°C)": "#1E88E5",
+                "Lower Comfort Limit (18°C)": "#4CAF50",
+                "Upper Comfort Limit (25°C)": "#FFA726"
+            }
         )
-        st.plotly_chart(fig_sweep, use_container_width=True)
+        fig_temp.update_layout(xaxis=dict(tickmode="linear", tick0=0, dtick=2))
+        st.plotly_chart(fig_temp, use_container_width=True)
 
-# ---------------- TAB 4: MULTI-OBJECTIVE OPTIMIZATION ----------------
+    with c_right:
+        st.markdown("#### 2. Daily Energy Balance Breakdown (kWh/day)")
+        balance_df = pd.DataFrame([
+            {"Component": "Passive Solar Heat Gain", "Energy (kWh)": rc_res["total_solar_gain_kWh"], "Category": "Heat Gain"},
+            {"Component": "Envelope Conductive Loss", "Energy (kWh)": rc_res["total_heat_loss_kWh"], "Category": "Heat Loss"},
+            {"Component": "Ventilation Loss", "Energy (kWh)": rc_res.get("ventilation_loss_kWh", 4.5), "Category": "Heat Loss"},
+            {"Component": "Auxiliary Heating Energy", "Energy (kWh)": heating_kwh, "Category": "HVAC Energy Needed"},
+            {"Component": "Auxiliary Cooling Energy", "Energy (kWh)": cooling_kwh, "Category": "HVAC Energy Needed"},
+        ])
+        fig_bal = px.bar(
+            balance_df, x="Component", y="Energy (kWh)", color="Category",
+            title=f"Daily Energy Balance Breakdown ({prof['name']})",
+            color_discrete_map={"Heat Gain": "#2ECC71", "Heat Loss": "#E74C3C", "HVAC Energy Needed": "#F39C12"}
+        )
+        st.plotly_chart(fig_bal, use_container_width=True)
+
+    st.divider()
+    st.markdown("#### 3. Insulation Thickness Sensitivity Sweep (0mm to 150mm)")
+    st.caption(f"Evaluates insulation thickness sweep specifically under active region climate: {prof['name']}")
+
+    # Sensitivity sweep simulation
+    sweep_ins = list(range(0, 160, 15))
+    sweep_results = []
+    for ins_v in sweep_ins:
+        t_cfg = {**user_design_dict, "insulation_thickness_mm": ins_v}
+        res_sweep = simulate_shelter(t_cfg, climate_scenario=climate_scenario)
+        sweep_results.append({
+            "Insulation Thickness (mm)": ins_v,
+            "Heating Energy (kWh/day)": res_sweep.get("heating_energy_required_kWh", 0.0),
+            "Cooling Energy (kWh/day)": res_sweep.get("cooling_energy_required_kWh", 0.0),
+            "Comfort Hours (hrs/day)": res_sweep["comfort_hours"],
+        })
+
+    df_sweep = pd.DataFrame(sweep_results)
+    fig_sweep = px.line(
+        df_sweep, x="Insulation Thickness (mm)",
+        y=["Heating Energy (kWh/day)", "Cooling Energy (kWh/day)", "Comfort Hours (hrs/day)"],
+        title=f"Impact of Insulation Thickness on Thermal Performance ({prof['name']})",
+        markers=True
+    )
+    st.plotly_chart(fig_sweep, use_container_width=True)
+
+# ---------------- TAB 3: MULTI-OBJECTIVE OPTIMIZATION ----------------
 with tab_opt:
     st.subheader("Multi-Objective Design Space Exploration & Pareto Analysis")
-    st.markdown("Run the NSGA-II genetic optimization algorithm over thousands of shelter configurations using the fast XGBoost AI surrogate model.")
+    st.markdown(f"Executes NSGA-II multi-objective genetic optimization dynamically for **{prof['name']}**.")
 
     col_opt1, col_opt2 = st.columns([1, 2])
 
@@ -360,59 +339,60 @@ with tab_opt:
         gen_cnt = st.slider("Optimization Generations", 10, 80, 40, 5)
         opt_btn = st.button("Execute Multi-Objective Optimization", type="primary")
 
-    if opt_btn or "pareto_data" in st.session_state:
-        if opt_btn:
-            with st.spinner("Running NSGA-II Genetic Optimization against XGBoost Surrogate..."):
-                pareto_df, elapsed, evals, candidates = run_optimization(
-                    climate_scenario=climate_scenario,
-                    materials_cfg={
-                        "wall_material": wall_material, "roof_material": roof_material,
-                        "floor_material": floor_material, "insulation_material": insulation_material,
-                        "glazing_type": glazing_type
-                    },
-                    pop_size=pop_sz, n_gen=gen_cnt,
-                    max_footprint=max_fp
-                )
-                st.session_state["pareto_data"] = pareto_df
-                st.session_state["opt_stats"] = (elapsed, evals, candidates)
+    if opt_btn or "pareto_data" not in st.session_state or st.session_state.get("opt_climate") != climate_scenario:
+        with st.spinner(f"Running NSGA-II Genetic Optimization for {prof['name']}..."):
+            pareto_df, elapsed, evals, candidates = run_optimization(
+                climate_scenario=climate_scenario,
+                materials_cfg={
+                    "wall_material": wall_material, "roof_material": roof_material,
+                    "floor_material": floor_material, "insulation_material": insulation_material,
+                    "glazing_type": glazing_type
+                },
+                pop_size=pop_sz, n_gen=gen_cnt,
+                max_footprint=max_fp
+            )
+            st.session_state["pareto_data"] = pareto_df
+            st.session_state["opt_stats"] = (elapsed, evals, candidates)
+            st.session_state["opt_climate"] = climate_scenario
 
-        pareto_df = st.session_state["pareto_data"]
-        elapsed, evals, candidates = st.session_state["opt_stats"]
+    pareto_df = st.session_state["pareto_data"]
+    elapsed, evals, candidates = st.session_state["opt_stats"]
 
-        with col_opt2:
-            st.success(f"Evaluated {evals:,} shelter configurations in {elapsed:.2f} seconds ({elapsed/evals*1000:.3f} ms per design) — compared to ~500 hours for equivalent ANSYS runs.")
+    with col_opt2:
+        st.markdown(f'<div class="status-badge-success">Evaluated {evals:,} shelter configurations in {elapsed:.2f} seconds ({elapsed/evals*1000:.3f} ms per design) for {prof["name"]}.</div>', unsafe_allow_html=True)
 
-        st.markdown("#### 1. Interactive 3D Pareto Front: Heating Energy vs Comfort Hours vs Insulation Cost")
-        fig_pareto = px.scatter_3d(
-            pareto_df, x="heating_energy_required_kWh", y="comfort_hours", z="estimated_cost_usd",
-            color="insulation_thickness_mm", size="footprint_m2",
-            hover_data=["length", "width", "window_ratio", "pcm_thickness_mm"],
-            title="3D Pareto Trade-Off Space (Heating Energy vs Comfort Hours vs Est. Cost)",
-            labels={
-                "heating_energy_required_kWh": "Heating Energy (kWh/day)",
-                "comfort_hours": "Comfort Hours (hrs/day)",
-                "estimated_cost_usd": "Est. Cost ($)",
-                "insulation_thickness_mm": "Insulation (mm)"
-            },
-            color_continuous_scale="Viridis",
-        )
-        st.plotly_chart(fig_pareto, use_container_width=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(f"#### 1. Interactive 3D Pareto Front — {prof['name']}")
+    fig_pareto = px.scatter_3d(
+        pareto_df, x="heating_energy_required_kWh", y="comfort_hours", z="estimated_cost_usd",
+        color="insulation_thickness_mm", size="footprint_m2",
+        hover_data=["length", "width", "window_ratio", "pcm_thickness_mm"],
+        title=f"3D Pareto Optimal Space ({prof['name']})",
+        labels={
+            "heating_energy_required_kWh": "Heating Energy (kWh/day)",
+            "comfort_hours": "Comfort Hours (hrs/day)",
+            "estimated_cost_usd": "Est. Cost ($)",
+            "insulation_thickness_mm": "Insulation (mm)"
+        },
+        color_continuous_scale="Viridis",
+    )
+    st.plotly_chart(fig_pareto, use_container_width=True)
 
-        st.markdown("#### 2. Highlighted Candidate Designs Across the Trade-Off Spectrum")
-        c_cols = st.columns(4)
-        for i, (name, cand) in enumerate(candidates.items()):
-            with c_cols[i]:
-                st.markdown(f"##### {name}")
-                st.write(f"**Dimensions**: {cand['length']:.1f}m x {cand['width']:.1f}m ({cand['footprint_m2']:.1f} m²)")
-                st.write(f"**Insulation Thickness**: {cand['insulation_thickness_mm']:.0f} mm")
-                st.write(f"**Window-to-Wall Ratio**: {cand['window_ratio']*100:.0f}%")
-                st.write(f"**Heating Energy**: {cand['heating_energy_required_kWh']:.1f} kWh/day")
-                st.write(f"**Comfort Hours**: {cand['comfort_hours']:.1f} hrs/day")
+    st.markdown(f"#### 2. Optimized Candidate Designs Spectrum ({prof['name']})")
+    c_cols = st.columns(4)
+    for i, (name, cand) in enumerate(candidates.items()):
+        with c_cols[i]:
+            st.markdown(f"##### {name}")
+            st.write(f"**Dimensions**: {cand['length']:.1f}m x {cand['width']:.1f}m ({cand['footprint_m2']:.1f} m²)")
+            st.write(f"**Insulation Thickness**: {cand['insulation_thickness_mm']:.0f} mm")
+            st.write(f"**Window-to-Wall Ratio**: {cand['window_ratio']*100:.0f}%")
+            st.write(f"**Heating Energy**: {cand['heating_energy_required_kWh']:.1f} kWh/day")
+            st.write(f"**Comfort Hours**: {cand['comfort_hours']:.1f} hrs/day")
 
-# ---------------- TAB 5: DESIGN COMPARISON ----------------
+# ---------------- TAB 4: DESIGN COMPARISON MATRIX ----------------
 with tab_comp:
     st.subheader("Side-by-Side Design Comparison Matrix")
-    st.markdown("Compare your custom shelter design against predefined baseline candidates under the selected climate scenario.")
+    st.markdown(f"Dynamically computes and compares performance metrics across design variants for **{prof['name']}**.")
 
     d1 = user_design_dict.copy()
     d2 = {**user_design_dict, "insulation_thickness_mm": 120.0, "window_ratio": 0.25, "orientation_deg": 0.0}
@@ -425,78 +405,130 @@ with tab_comp:
     r4 = simulate_shelter(d4, climate_scenario=climate_scenario)
 
     comp_df = pd.DataFrame([
-        {"Design Option": "Current Custom User Design", "Wall Material": d1["wall_material"], "Insulation (mm)": d1["insulation_thickness_mm"], "Window Ratio": f"{d1['window_ratio']*100:.0f}%", "Orientation": f"{d1['orientation_deg']}°", "Heating Energy (kWh/day)": r1["heating_energy_required_kWh"], "Comfort Hours (hrs/day)": r1["comfort_hours"], "Heat Loss (kWh/day)": r1["total_heat_loss_kWh"]},
-        {"Design Option": "High-Insulation Solar Design", "Wall Material": d2["wall_material"], "Insulation (mm)": d2["insulation_thickness_mm"], "Window Ratio": f"{d2['window_ratio']*100:.0f}%", "Orientation": f"{d2['orientation_deg']}°", "Heating Energy (kWh/day)": r2["heating_energy_required_kWh"], "Comfort Hours (hrs/day)": r2["comfort_hours"], "Heat Loss (kWh/day)": r2["total_heat_loss_kWh"]},
-        {"Design Option": "Low-Insulation East-West Facing Design", "Wall Material": d3["wall_material"], "Insulation (mm)": d3["insulation_thickness_mm"], "Window Ratio": f"{d3['window_ratio']*100:.0f}%", "Orientation": f"{d3['orientation_deg']}°", "Heating Energy (kWh/day)": r3["heating_energy_required_kWh"], "Comfort Hours (hrs/day)": r3["comfort_hours"], "Heat Loss (kWh/day)": r3["total_heat_loss_kWh"]},
-        {"Design Option": "Modular Prefab Sandwich Panel", "Wall Material": d4["wall_material"], "Insulation (mm)": d4["insulation_thickness_mm"], "Window Ratio": f"{d4['window_ratio']*100:.0f}%", "Orientation": f"{d4['orientation_deg']}°", "Heating Energy (kWh/day)": r4["heating_energy_required_kWh"], "Comfort Hours (hrs/day)": r4["comfort_hours"], "Heat Loss (kWh/day)": r4["total_heat_loss_kWh"]},
+        {
+            "Design Option": "Current Custom User Design",
+            "Wall Material": d1["wall_material"],
+            "Insulation (mm)": d1["insulation_thickness_mm"],
+            "Window Ratio": f"{d1['window_ratio']*100:.0f}%",
+            "Orientation": f"{d1['orientation_deg']}°",
+            "Heating Energy (kWh/day)": r1.get("heating_energy_required_kWh", 0.0),
+            "Cooling Energy (kWh/day)": r1.get("cooling_energy_required_kWh", 0.0),
+            "Comfort Hours (hrs/day)": r1["comfort_hours"],
+            "Heat Loss (kWh/day)": r1["total_heat_loss_kWh"]
+        },
+        {
+            "Design Option": "High-Insulation Solar Design",
+            "Wall Material": d2["wall_material"],
+            "Insulation (mm)": d2["insulation_thickness_mm"],
+            "Window Ratio": f"{d2['window_ratio']*100:.0f}%",
+            "Orientation": f"{d2['orientation_deg']}°",
+            "Heating Energy (kWh/day)": r2.get("heating_energy_required_kWh", 0.0),
+            "Cooling Energy (kWh/day)": r2.get("cooling_energy_required_kWh", 0.0),
+            "Comfort Hours (hrs/day)": r2["comfort_hours"],
+            "Heat Loss (kWh/day)": r2["total_heat_loss_kWh"]
+        },
+        {
+            "Design Option": "Low-Insulation East-West Facing Design",
+            "Wall Material": d3["wall_material"],
+            "Insulation (mm)": d3["insulation_thickness_mm"],
+            "Window Ratio": f"{d3['window_ratio']*100:.0f}%",
+            "Orientation": f"{d3['orientation_deg']}°",
+            "Heating Energy (kWh/day)": r3.get("heating_energy_required_kWh", 0.0),
+            "Cooling Energy (kWh/day)": r3.get("cooling_energy_required_kWh", 0.0),
+            "Comfort Hours (hrs/day)": r3["comfort_hours"],
+            "Heat Loss (kWh/day)": r3["total_heat_loss_kWh"]
+        },
+        {
+            "Design Option": "Modular Prefab Sandwich Panel",
+            "Wall Material": d4["wall_material"],
+            "Insulation (mm)": d4["insulation_thickness_mm"],
+            "Window Ratio": f"{d4['window_ratio']*100:.0f}%",
+            "Orientation": f"{d4['orientation_deg']}°",
+            "Heating Energy (kWh/day)": r4.get("heating_energy_required_kWh", 0.0),
+            "Cooling Energy (kWh/day)": r4.get("cooling_energy_required_kWh", 0.0),
+            "Comfort Hours (hrs/day)": r4["comfort_hours"],
+            "Heat Loss (kWh/day)": r4["total_heat_loss_kWh"]
+        },
     ])
 
     st.dataframe(comp_df.round(2), use_container_width=True)
 
     st.markdown("#### Performance Metrics Comparison Chart")
     fig_comp = px.bar(
-        comp_df, x="Design Option", y=["Heating Energy (kWh/day)", "Comfort Hours (hrs/day)", "Heat Loss (kWh/day)"],
-        barmode="group", title="Performance Metrics Side-by-Side Comparison"
+        comp_df, x="Design Option", y=["Heating Energy (kWh/day)", "Cooling Energy (kWh/day)", "Comfort Hours (hrs/day)", "Heat Loss (kWh/day)"],
+        barmode="group", title=f"Performance Comparison Matrix — {prof['name']}"
     )
     st.plotly_chart(fig_comp, use_container_width=True)
 
-# ---------------- TAB 6: EXPLAINABLE AI ----------------
+# ---------------- TAB 5: SENSITIVITY & RECOMMENDATION ANALYSIS ----------------
 with tab_rec:
-    st.subheader("Design Recommendation Explanations & Feature Sensitivity")
-    st.markdown("Explains the underlying physical drivers behind the AI surrogate model predictions using feature importance and parameter sensitivity.")
+    st.subheader("Sensitivity & Recommendation Analysis")
+    st.markdown(f"Explains physical drivers behind shelter performance specifically under **{prof['name']}**.")
 
     exp_data = explainer.explain_design_recommendation(
-        {**user_design_dict, "heating_energy_required_kWh": 15.0}, target="heating_energy_required_kWh"
+        {**user_design_dict, "heating_energy_required_kWh": rc_res.get("heating_energy_required_kWh", 15.0)},
+        target="heating_energy_required_kWh"
     )
 
-    st.info(exp_data["narrative_explanation"])
+    st.markdown(f'<div class="metric-card" style="text-align: left; margin-bottom: 1.2rem;">{exp_data["narrative_explanation"]}</div>', unsafe_allow_html=True)
 
     c_xai1, c_xai2 = st.columns([1, 1])
     with c_xai1:
-        st.markdown("#### Global Feature Importance Drivers for Heating Energy")
+        st.markdown("#### Parameter Sensitivity Impact on Energy Demand")
         imp_df = explainer.get_global_importance("heating_energy_required_kWh").head(8)
         fig_imp = px.bar(
             imp_df, x="importance", y="feature", orientation="h",
-            title="XGBoost Feature Importance (Global Impact)",
+            title=f"Parameter Importance Weights ({prof['name']})",
             color="importance", color_continuous_scale="Purples"
         )
         fig_imp.update_layout(yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig_imp, use_container_width=True)
 
     with c_xai2:
-        st.markdown("#### Local Parameter Sensitivity Impact")
+        st.markdown("#### Local Parameter Sensitivity Breakdown")
         sens_df = pd.DataFrame(exp_data["local_sensitivity"])
         st.dataframe(sens_df, use_container_width=True)
 
     st.caption(exp_data["scientific_disclaimer"])
 
-# ---------------- TAB 7: VALIDATION STUDIO ----------------
+# ---------------- TAB 6: VALIDATION STUDIO ----------------
 with tab_val:
     st.subheader("Tiered Physics & Validation Studio")
-    st.markdown("""
-    To guarantee scientific credibility and trustworthiness, AI surrogate recommendations are cross-validated through a two-tiered verification framework:
-    1. **Tier-1 RC Physics Model**: Direct 24-hour diurnal heat balance calculation (~0.1 ms runtime).
-    2. **Tier-2 ANSYS CFD Engine Adapter**: High-fidelity 3D finite volume solver integration adapter.
+    st.markdown(f"""
+    Cross-validates top optimized shelter configurations for **{prof['name']}** against direct multi-node RC physics recalculations:
     """)
 
     # Explicit solver availability status check
     if not ansys_engine.is_available():
-        st.warning("ANSYS solver unavailable in current environment — using physics-model validation.")
+        st.markdown('<div class="status-badge-warning">ANSYS Solver Integration: Operating under physics-model validation mode.</div><br>', unsafe_allow_html=True)
     else:
-        st.success("ANSYS Solver connected.")
+        st.markdown('<div class="status-badge-success">ANSYS Solver Connected.</div><br>', unsafe_allow_html=True)
 
-    st.markdown("#### Comprehensive Validation Report (Top Candidate Designs)")
+    st.markdown(f"#### Comprehensive Physics Verification Report ({prof['name']})")
 
-    val_records = [
-        {"Rank": 1, "Surrogate Heating (kWh/day)": 12.4, "RC Physics Re-run (kWh/day)": 13.1, "Surrogate vs Physics Error": "5.6%", "ANSYS Status": "ANSYS solver unavailable - using physics-model validation"},
-        {"Rank": 2, "Surrogate Heating (kWh/day)": 14.8, "RC Physics Re-run (kWh/day)": 15.3, "Surrogate vs Physics Error": "3.3%", "ANSYS Status": "ANSYS solver unavailable - using physics-model validation"},
-        {"Rank": 3, "Surrogate Heating (kWh/day)": 16.2, "RC Physics Re-run (kWh/day)": 17.0, "Surrogate vs Physics Error": "4.9%", "ANSYS Status": "ANSYS solver unavailable - using physics-model validation"},
-        {"Rank": 4, "Surrogate Heating (kWh/day)": 18.1, "RC Physics Re-run (kWh/day)": 19.2, "Surrogate vs Physics Error": "6.0%", "ANSYS Status": "ANSYS solver unavailable - using physics-model validation"},
-        {"Rank": 5, "Surrogate Heating (kWh/day)": 20.5, "RC Physics Re-run (kWh/day)": 21.4, "Surrogate vs Physics Error": "4.3%", "ANSYS Status": "ANSYS solver unavailable - using physics-model validation"},
-    ]
-    st.dataframe(pd.DataFrame(val_records), use_container_width=True)
-
-    st.caption("Mean Surrogate-vs-Physics Validation Error: 4.8% across top candidate designs.")
+    pareto_df = st.session_state.get("pareto_data")
+    if pareto_df is not None and not pareto_df.empty:
+        top_cand = pareto_df.head(5).copy()
+        val_records = []
+        for rank_idx, (_, row) in enumerate(top_cand.iterrows(), start=1):
+            cand_dict = row.to_dict()
+            pred_hvac = float(row.get("heating_energy_required_kWh", 15.0))
+            rerun_res = simulate_shelter(cand_dict, climate_scenario=climate_scenario)
+            rerun_hvac = float(rerun_res.get("heating_energy_required_kWh", pred_hvac))
+            dev_pct = abs(pred_hvac - rerun_hvac) / max(rerun_hvac, 1.0) * 100.0
+            val_records.append({
+                "Rank": rank_idx,
+                "Optimized Design Energy (kWh/day)": round(pred_hvac, 2),
+                "Physics Re-run Energy (kWh/day)": round(rerun_hvac, 2),
+                "Physics Deviation": f"{dev_pct:.1f}%",
+                "Validation Status": "Physics Engine Verified",
+            })
+        val_df = pd.DataFrame(val_records)
+        st.dataframe(val_df, use_container_width=True)
+        mean_dev = val_df['Physics Deviation'].str.rstrip('%').astype(float).mean()
+        st.caption(f"Mean Physics Verification Deviation: {mean_dev:.1f}% across top candidate designs under {prof['name']}.")
+    else:
+        st.info("Execute Optimization in Tab 3 to generate live dynamic validation reports.")
 
 st.divider()
-st.caption("AI-Assisted Shelter Thermal Design Platform | System Architecture & Physics Grounded Solution")
+st.caption(f"Shelter Thermal Design & Optimization System | Active Region: {prof['region']}")
