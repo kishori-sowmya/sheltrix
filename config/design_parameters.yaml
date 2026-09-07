@@ -1,0 +1,131 @@
+# Central Shelter Design Parameters & Parameter Space Bounds Configuration
+# All parameters used in physics modeling, LHS sampling, surrogate ML, and NSGA-II optimization.
+
+parameters:
+  length:
+    name: "Shelter Length"
+    unit: "m"
+    min: 3.0
+    max: 8.0
+    default: 5.0
+    type: "float"
+    description: "Length of the shelter main floor boundary"
+
+  width:
+    name: "Shelter Width"
+    unit: "m"
+    min: 3.0
+    max: 6.0
+    default: 4.0
+    type: "float"
+    description: "Width of the shelter main floor boundary"
+
+  wall_height:
+    name: "Wall Height"
+    unit: "m"
+    min: 2.2
+    max: 3.5
+    default: 2.8
+    type: "float"
+    description: "Eaves wall height of the single-zone shelter"
+
+  roof_angle:
+    name: "Roof Angle"
+    unit: "deg"
+    min: 0.0
+    max: 45.0
+    default: 20.0
+    type: "float"
+    description: "Pitch angle of the shelter roof"
+
+  orientation_deg:
+    name: "Solar Orientation"
+    unit: "deg"
+    min: 0.0
+    max: 180.0
+    default: 0.0
+    type: "float"
+    description: "Azimuth angle from true South (0 deg = South-facing max solar gain, 180 deg = North)"
+
+  insulation_thickness_mm:
+    name: "Insulation Thickness"
+    unit: "mm"
+    min: 0.0
+    max: 150.0
+    default: 80.0
+    type: "float"
+    description: "Thickness of added exterior/interior envelope thermal insulation"
+
+  window_ratio:
+    name: "Window-to-Wall Ratio"
+    unit: "fraction"
+    min: 0.05
+    max: 0.40
+    default: 0.15
+    type: "float"
+    description: "Ratio of fenestration window glazing area to total wall area"
+
+  pcm_thickness_mm:
+    name: "PCM Layer Thickness"
+    unit: "mm"
+    min: 0.0
+    max: 50.0
+    default: 20.0
+    type: "float"
+    description: "Thickness of integrated Phase Change Material thermal storage panel"
+
+categories:
+  wall_material:
+    name: "Wall Structure Material"
+    default: "cseb"
+    allowed_values:
+      - "brick"
+      - "concrete"
+      - "cseb"
+      - "timber"
+      - "sandwich_panel"
+    description: "Primary opaque envelope structural material"
+
+  roof_material:
+    name: "Roof Material"
+    default: "sandwich_panel"
+    allowed_values:
+      - "brick"
+      - "concrete"
+      - "cseb"
+      - "timber"
+      - "sandwich_panel"
+    description: "Roof outer structural surface material"
+
+  floor_material:
+    name: "Floor Slab Material"
+    default: "concrete"
+    allowed_values:
+      - "concrete"
+      - "brick"
+      - "cseb"
+    description: "Thermal mass floor foundation material"
+
+  insulation_material:
+    name: "Insulation Material"
+    default: "xps_foam"
+    allowed_values:
+      - "eps_foam"
+      - "xps_foam"
+      - "mineral_wool"
+      - "rock_wool"
+    description: "Insulation core material type"
+
+  glazing_type:
+    name: "Glazing Window System"
+    default: "double_pane"
+    allowed_values:
+      - "single_pane"
+      - "double_pane"
+    description: "Window glass glazing thermal specification"
+
+  pcm_present:
+    name: "PCM Activation Status"
+    default: 1
+    allowed_values: [0, 1]
+    description: "Binary flag indicating inclusion of Phase Change Material"

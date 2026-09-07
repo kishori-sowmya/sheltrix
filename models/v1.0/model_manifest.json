@@ -1,0 +1,18 @@
+{
+  "model_version": "v1.0",
+  "trained_at": "2026-09-06 22:06:57",
+  "algorithm": "XGBoost Regressor (n_estimators=250, max_depth=4)",
+  "n_training_samples": 570,
+  "feature_count": 35,
+  "target_count": 8,
+  "targets": [
+    "indoor_temp_mean",
+    "indoor_temp_min",
+    "indoor_temp_max",
+    "indoor_temp_swing",
+    "comfort_hours",
+    "total_heat_loss_kWh",
+    "total_solar_gain_kWh",
+    "heating_energy_required_kWh"
+  ]
+}

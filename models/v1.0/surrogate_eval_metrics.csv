@@ -1,0 +1,9 @@
+target,cv_mae_mean,cv_r2_mean,test_mae,test_rmse,test_r2,test_mape_pct
+indoor_temp_mean,0.898,0.96,0.709,1.168,0.972,2.74
+indoor_temp_min,0.844,0.907,0.629,1.015,0.933,2.78
+indoor_temp_max,1.447,0.957,1.121,1.767,0.971,4.14
+indoor_temp_swing,1.2,0.93,0.949,1.559,0.951,1193997.5
+comfort_hours,1.4,0.926,1.417,2.464,0.893,1010101.16
+total_heat_loss_kWh,5.822,0.924,5.649,9.29,0.911,13.75
+total_solar_gain_kWh,2.81,0.958,1.818,3.153,0.98,6.05
+heating_energy_required_kWh,4.554,0.944,4.865,10.273,0.914,4204962.58
