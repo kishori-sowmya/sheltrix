@@ -106,6 +106,10 @@ def simulate_shelter(params: Dict[str, Any], climate_dict: Dict[str, Any] = None
     heating_energy_total = 0.0
     cooling_energy_total = 0.0
 
+    # Total envelope conductance UA_envelope (W/K) + ventilation conductance UA_vent (W/K)
+    UA_envelope = (net_wall_area / R_wall) + (roof_area / R_roof) + (glazing_props["U_value"] * window_area) + (floor_area / 1.2)
+    UA_vent = m_dot_air * AIR_CP
+
     for day in range(SPINUP_DAYS):
         is_final_day = (day == SPINUP_DAYS - 1)
         for h in range(24):
@@ -117,7 +121,13 @@ def simulate_shelter(params: Dict[str, Any], climate_dict: Dict[str, Any] = None
             Q_solar_opaque = 0.05 * wall_props["alpha"] * net_wall_area * I_solar
             Q_solar_total = Q_solar_window + Q_solar_opaque
 
-            # Conductive heat transfers
+            # Dynamic window ventilation / free cooling when indoor temp > 23°C and outdoor air is cooler
+            eff_ACH = ACH
+            if T_curr > 23.0 and T_amb < T_curr:
+                eff_ACH = max(ACH, 4.0)
+            m_dot_eff = (eff_ACH * air_volume * AIR_RHO) / 3600.0
+
+            # Conductive heat transfers (free-floating)
             Q_cond_wall = (net_wall_area / R_wall) * (T_amb - T_curr)
             Q_cond_roof = (roof_area / R_roof) * (T_amb - T_curr)
             Q_cond_window = glazing_props["U_value"] * window_area * (T_amb - T_curr)
@@ -125,32 +135,23 @@ def simulate_shelter(params: Dict[str, Any], climate_dict: Dict[str, Any] = None
             Q_cond_total = Q_cond_wall + Q_cond_roof + Q_cond_window + Q_cond_floor
 
             # Ventilation loss
-            Q_vent = m_dot_air * AIR_CP * (T_amb - T_curr)
+            Q_vent = m_dot_eff * AIR_CP * (T_amb - T_curr)
 
             Q_net = Q_solar_total + Q_cond_total + Q_vent
 
-            # Effective capacitance with PCM phase-change broadening
+            # Effective capacitance with PCM phase-change buffering
             effective_C = C_total
-            if pcm_active and abs(T_curr - pcm_melt_T) < 2.0:
-                effective_C = C_total + (pcm_latent_J / 4.0)
+            if pcm_active and abs(T_curr - pcm_melt_T) < 2.5:
+                effective_C = C_total + (pcm_latent_J / 3.0)
 
             dT = (Q_net * TIMESTEP_S) / effective_C
-            T_uncontrolled = T_curr + dT
+            T_curr = T_curr + dT
 
-            # Heating & Cooling HVAC setpoint energy calculations
-            heating_wh = 0.0
-            cooling_wh = 0.0
+            # Auxiliary HVAC Heating required at 18°C setpoint (Wh/hr)
+            heating_wh = max(0.0, (UA_envelope + UA_vent) * (COMFORT_LOW - T_amb) - Q_solar_total)
 
-            if T_uncontrolled < COMFORT_LOW:
-                required_dT = COMFORT_LOW - T_uncontrolled
-                Q_heater = required_dT * effective_C / TIMESTEP_S
-                heating_wh = Q_heater * (TIMESTEP_S / 3600.0)
-            elif T_uncontrolled > COMFORT_HIGH:
-                excess_dT = T_uncontrolled - COMFORT_HIGH
-                Q_cooler = excess_dT * effective_C / TIMESTEP_S
-                cooling_wh = Q_cooler * (TIMESTEP_S / 3600.0)
-
-            T_curr = T_uncontrolled
+            # Auxiliary HVAC Cooling required at 25°C setpoint (Wh/hr)
+            cooling_wh = max(0.0, Q_solar_total + (UA_envelope + UA_vent) * (T_amb - COMFORT_HIGH))
 
             if is_final_day:
                 hourly_history[h] = T_curr
@@ -180,7 +181,7 @@ def simulate_shelter(params: Dict[str, Any], climate_dict: Dict[str, Any] = None
         "assumptions": [
             "Lumped 1-zone capacitance model",
             "Diurnal 3-day warm-up spinup included",
-            "Simplified PCM enthalpy buffering (+/- 2°C band around melt point)",
+            "Simplified PCM enthalpy buffering (+/- 2.5°C band around melt point)",
             "Fixed floor ground resistance R = 1.2 m2.K/W",
         ]
     }

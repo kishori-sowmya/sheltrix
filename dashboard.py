@@ -205,8 +205,8 @@ with tab_design:
         g_props = mdb.get_material("glazing", glazing_type)
 
         wall_weight_ton = (net_w_ar * 0.20 * w_props["rho"]) / 1000.0
-        ins_cost_usd = (insulation_thickness_mm / 50.0) * i_props.get("cost_per_m2_base", 15.0) * (net_w_ar + rf_ar)
-        total_est_cost_usd = (net_w_ar * w_props.get("cost_per_m2_base", 30)) + ins_cost_usd + (win_ar * g_props.get("cost_per_m2_base", 75))
+        ins_cost_inr = (insulation_thickness_mm / 50.0) * i_props.get("cost_per_m2_base", 1500.0) * (net_w_ar + rf_ar)
+        total_est_cost_inr = (net_w_ar * w_props.get("cost_per_m2_base", 2500)) + ins_cost_inr + (win_ar * g_props.get("cost_per_m2_base", 6200))
 
         st.markdown("#### Derived Architectural & Thermal Properties")
         pcol1, pcol2, pcol3 = st.columns(3)
@@ -215,7 +215,7 @@ with tab_design:
         pcol2.metric("Wall R-Value (Insulation)", f"{r_wall:.2f} m²K/W", help="Thermal resistance of exterior wall. Higher R-Value means better insulation.")
         pcol2.metric("Wall U-Value (Conductance)", f"{u_wall:.3f} W/m²K", help="Thermal transmittance. Lower U-Value means less heat flow.")
         pcol3.metric("Est. Structural Weight", f"{wall_weight_ton:.1f} Tons", help="Approximate mass of outer structural wall envelope")
-        pcol3.metric("Est. Envelope Material Cost", f"${total_est_cost_usd:,.0f}", help="Estimated material cost for envelope, insulation, and glazing")
+        pcol3.metric("Est. Envelope Material Cost", f"₹ {total_est_cost_inr:,.0f}", help="Estimated material cost for envelope, insulation, and glazing in Indian Rupees (₹)")
 
         valid, warnings = qc.validate_input_bounds(user_design_dict)
         if not valid:
@@ -363,15 +363,17 @@ with tab_opt:
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(f"#### 1. Interactive 3D Pareto Front — {prof['name']}")
+    cost_col = "estimated_cost_inr" if "estimated_cost_inr" in pareto_df.columns else "estimated_cost_usd"
     fig_pareto = px.scatter_3d(
-        pareto_df, x="heating_energy_required_kWh", y="comfort_hours", z="estimated_cost_usd",
+        pareto_df, x="heating_energy_required_kWh", y="comfort_hours", z=cost_col,
         color="insulation_thickness_mm", size="footprint_m2",
         hover_data=["length", "width", "window_ratio", "pcm_thickness_mm"],
         title=f"3D Pareto Optimal Space ({prof['name']})",
         labels={
             "heating_energy_required_kWh": "Heating Energy (kWh/day)",
             "comfort_hours": "Comfort Hours (hrs/day)",
-            "estimated_cost_usd": "Est. Cost ($)",
+            "estimated_cost_inr": "Est. Cost (₹)",
+            "estimated_cost_usd": "Est. Cost (₹)",
             "insulation_thickness_mm": "Insulation (mm)"
         },
         color_continuous_scale="Viridis",

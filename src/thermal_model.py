@@ -96,60 +96,59 @@ def simulate_shelter(params, climate_scenario="winter"):
 
     # --- Time stepping (explicit Euler, 1-hour steps) ---
     T_indoor = np.zeros(24)
-    T_indoor[0] = T_amb_hourly[0] + 5  # initial guess, slightly warmer than outside
-    pcm_energy_stored = 0.0
+    T_curr = T_amb_hourly[0] + 5.0
 
     heat_loss_total = 0.0
     solar_gain_total = 0.0
     heating_energy_total = 0.0
 
+    UA_envelope = (net_wall_area / R_wall) + (roof_area / R_roof) + (glazing["U_value"] * window_area) + (floor_area / 1.2)
+    UA_vent = m_dot_air * AIR_CP
+
     for h in range(24):
         T_amb = T_amb_hourly[h]
         I_solar = solar_hourly[h]
-        T_prev = T_indoor[h - 1] if h > 0 else T_indoor[0]
 
         # Solar gain through windows
         Q_solar = glazing["SHGC"] * window_area * I_solar * orientation_factor
-        # Solar gain absorbed on opaque wall/roof surface then partially conducted in (simplified as small added term)
         Q_solar_wall = 0.05 * MATERIALS[params["wall_material"]]["alpha"] * net_wall_area * I_solar
+        Q_solar_total = Q_solar + Q_solar_wall
 
-        # Conductive losses/gains through walls, roof, and windows (U-value based)
-        Q_cond_wall = (net_wall_area / R_wall) * (T_amb - T_prev)
-        Q_cond_roof = (roof_area / R_roof) * (T_amb - T_prev)
-        Q_cond_window = glazing["U_value"] * window_area * (T_amb - T_prev)
-        Q_cond_floor = (floor_area / 1.2) * (ground_T - T_prev)  # approx floor R=1.2 m2K/W
+        # Dynamic window ventilation / free cooling when indoor temp > 23°C and outdoor air is cooler
+        eff_ACH = ACH
+        if T_curr > 23.0 and T_amb < T_curr:
+            eff_ACH = max(ACH, 4.0)
+        m_dot_eff = (eff_ACH * air_volume * AIR_RHO) / 3600.0
 
+        # Conductive losses/gains
+        Q_cond_wall = (net_wall_area / R_wall) * (T_amb - T_curr)
+        Q_cond_roof = (roof_area / R_roof) * (T_amb - T_curr)
+        Q_cond_window = glazing["U_value"] * window_area * (T_amb - T_curr)
+        Q_cond_floor = (floor_area / 1.2) * (ground_T - T_curr)
         Q_cond_total = Q_cond_wall + Q_cond_roof + Q_cond_window + Q_cond_floor
 
         # Ventilation loss
-        Q_vent = m_dot_air * AIR_CP * (T_amb - T_prev)
+        Q_vent = m_dot_eff * AIR_CP * (T_amb - T_curr)
 
         # Net heat into zone (W), before heating input
-        Q_net = Q_solar + Q_solar_wall + Q_cond_total + Q_vent
+        Q_net = Q_solar_total + Q_cond_total + Q_vent
 
-        # PCM buffering: if crossing melting point, absorb/release energy instead of raising temp
         effective_C = C_total
-        if pcm_active and abs(T_prev - pcm_melt_T) < 2.0:
-            effective_C = C_total + (pcm_latent_J / 4.0)  # smeared latent effect over ~4C band
+        if pcm_active and abs(T_curr - pcm_melt_T) < 2.5:
+            effective_C = C_total + (pcm_latent_J / 3.0)
 
         dT = (Q_net * TIMESTEP_S) / effective_C
-        T_new = T_prev + dT
+        T_curr = T_curr + dT
+        T_indoor[h] = T_curr
 
-        # Simple heating system: if below comfort floor, add heat to bring to COMFORT_LOW (a "smart" heater)
-        heating_energy_wh = 0.0
-        if T_new < COMFORT_LOW:
-            required_dT = COMFORT_LOW - T_new
-            Q_heater = required_dT * effective_C / TIMESTEP_S
-            heating_energy_wh = Q_heater * (TIMESTEP_S / 3600.0)
-            T_new = COMFORT_LOW
+        # Auxiliary heating required to maintain 18°C
+        heating_wh = max(0.0, (UA_envelope + UA_vent) * (COMFORT_LOW - T_amb) - Q_solar_total)
 
-        T_indoor[h] = T_new
-        heat_loss_total += max(0, -Q_cond_total) * (TIMESTEP_S / 3600.0)
-        solar_gain_total += (Q_solar + Q_solar_wall) * (TIMESTEP_S / 3600.0)
-        heating_energy_total += heating_energy_wh
+        heat_loss_total += max(0.0, -Q_cond_total) * (TIMESTEP_S / 3600.0)
+        solar_gain_total += Q_solar_total * (TIMESTEP_S / 3600.0)
+        heating_energy_total += heating_wh
 
-    comfort_hours = int(np.sum((T_indoor >= COMFORT_LOW) & (T_indoor <= COMFORT_HIGH + 4)))
-    # (+4 upper slack: winter demo rarely overheats; comfort mainly limited by cold)
+    comfort_hours = int(np.sum((T_indoor >= COMFORT_LOW) & (T_indoor <= COMFORT_HIGH)))
 
     return {
         "indoor_temp_mean": float(np.mean(T_indoor)),

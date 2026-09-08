@@ -149,19 +149,19 @@ class ShelterDesignProblem(Problem):
         heating = self.heat_model.predict(feature_matrix)
         comfort = self.comfort_model.predict(feature_matrix)
 
-        # Objective 3: Construction cost proxy ($/m2 envelope area)
+        # Objective 3: Construction cost proxy (INR/m2 envelope area)
         cost_proxy = np.zeros(len(X))
         for i, x in enumerate(X):
             L, W, H, _, _, ins_t, w_ratio, pcm_t = x
             area = 2 * (L + W) * H + L * W
-            ins_cost = (ins_t / 50.0) * 15.0 * area
-            pcm_cost = (pcm_t / 10.0) * 25.0 * (L * W)
-            cost_proxy[i] = ins_cost + pcm_cost + (area * 35.0)
+            ins_cost = (ins_t / 50.0) * 1250.0 * area
+            pcm_cost = (pcm_t / 10.0) * 2000.0 * (L * W)
+            cost_proxy[i] = ins_cost + pcm_cost + (area * 3000.0)
 
         # F1: Min heating, F2: Max comfort (-comfort), F3: Min cost
         out["F"] = np.column_stack([heating, -comfort, cost_proxy])
 
-        # Constraint: Aspect ratio L/W <= 2.5 (g <= 0)
+        # Constraint: Aspect ratio L/W <= 2.8 (g <= 0)
         g1 = (X[:, 0] / X[:, 1]) - 2.8
         out["G"] = g1
 
@@ -205,7 +205,8 @@ def run_optimization(
     pareto_df = pd.DataFrame(result.X, columns=var_names)
     pareto_df["heating_energy_required_kWh"] = np.maximum(0.0, result.F[:, 0])
     pareto_df["comfort_hours"] = np.clip(-result.F[:, 1], 0.0, 24.0)
-    pareto_df["estimated_cost_usd"] = result.F[:, 2]
+    pareto_df["estimated_cost_inr"] = result.F[:, 2]
+    pareto_df["estimated_cost_usd"] = result.F[:, 2] # Alias for legacy compatibility
 
     for k, v in materials_cfg.items():
         pareto_df[k] = v
@@ -225,7 +226,7 @@ def run_optimization(
     candidates = {
         "Best Energy": pareto_df.sort_values("heating_energy_required_kWh").iloc[0].to_dict(),
         "Best Comfort": pareto_df.sort_values("comfort_hours", ascending=False).iloc[0].to_dict(),
-        "Best Cost": pareto_df.sort_values("estimated_cost_usd").iloc[0].to_dict(),
+        "Best Cost": pareto_df.sort_values("estimated_cost_inr").iloc[0].to_dict(),
         "Balanced": pareto_df.iloc[len(pareto_df) // 2].to_dict(),
     }
 
