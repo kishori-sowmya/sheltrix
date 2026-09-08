@@ -152,17 +152,130 @@ PREDEFINED_CLIMATES: Dict[str, Dict[str, Any]] = {
         "T_ground": -4.0,
         "RH_mean": 45.0,
     },
-    "sikkim_summer": {
-        "name": "Nathu La Pass Mild Summer (Jul)",
-        "region": "Sikkim (Nathu La High Pass)",
-        "season": "Summer",
-        "data_source": "IMD Sikkim Normals & NASA POWER",
+    # --- Tamil Nadu (Ooty / Nilgiris) ---
+    "ooty_winter": {
+        "name": "Ooty Nilgiris Cold Winter (Jan)",
+        "region": "Tamil Nadu (Ooty / Nilgiris Hill Station)",
+        "season": "Winter",
+        "data_source": "IMD Ooty Normals & NASA POWER",
         "is_synthetic": True,
-        "T_amb_hourly": generate_diurnal_temp(t_mean=11.0, t_amp=5.0).tolist(),   # ~ 6°C to 16°C
-        "solar_hourly": generate_solar_profile(peak_irradiance=650.0, sunrise=5.1, sunset=18.8).tolist(),
-        "wind_speed_mean": 3.2,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=10.0, t_amp=6.0).tolist(),   # ~ 4°C to 16°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=750.0, sunrise=6.4, sunset=18.2).tolist(),
+        "wind_speed_mean": 2.5,
         "T_ground": 9.0,
+        "RH_mean": 55.0,
+    },
+    "ooty_summer": {
+        "name": "Ooty Nilgiris Summer (May)",
+        "region": "Tamil Nadu (Ooty / Nilgiris Hill Station)",
+        "season": "Summer",
+        "data_source": "IMD Ooty Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=17.0, t_amp=5.0).tolist(),   # ~ 12°C to 22°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=850.0, sunrise=6.0, sunset=18.6).tolist(),
+        "wind_speed_mean": 2.2,
+        "T_ground": 16.0,
+        "RH_mean": 65.0,
+    },
+    # --- Kerala (Munnar / High Range) ---
+    "munnar_winter": {
+        "name": "Munnar High Range Winter (Jan)",
+        "region": "Kerala (Munnar / Western Ghats)",
+        "season": "Winter",
+        "data_source": "IMD Munnar Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=14.0, t_amp=6.0).tolist(),   # ~ 8°C to 20°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=800.0, sunrise=6.3, sunset=18.3).tolist(),
+        "wind_speed_mean": 2.0,
+        "T_ground": 13.0,
+        "RH_mean": 60.0,
+    },
+    "munnar_monsoon": {
+        "name": "Munnar High Range Monsoon (Jul)",
+        "region": "Kerala (Munnar / Western Ghats)",
+        "season": "Monsoon",
+        "data_source": "IMD Munnar Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=17.0, t_amp=3.0).tolist(),   # ~ 14°C to 20°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=380.0, sunrise=6.1, sunset=18.7).tolist(),
+        "wind_speed_mean": 3.5,
+        "T_ground": 16.0,
+        "RH_mean": 92.0,
+    },
+    # --- Karnataka (Bengaluru) ---
+    "bengaluru_winter": {
+        "name": "Bengaluru Mild Winter (Jan)",
+        "region": "Karnataka (Bengaluru Plateau)",
+        "season": "Winter",
+        "data_source": "IMD Bengaluru Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=21.5, t_amp=6.5).tolist(),  # ~ 15°C to 28°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=820.0, sunrise=6.4, sunset=18.2).tolist(),
+        "wind_speed_mean": 2.5,
+        "T_ground": 20.0,
+        "RH_mean": 50.0,
+    },
+    "bengaluru_summer": {
+        "name": "Bengaluru Warm Summer (Apr)",
+        "region": "Karnataka (Bengaluru Plateau)",
+        "season": "Summer",
+        "data_source": "IMD Bengaluru Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=29.0, t_amp=7.0).tolist(),   # ~ 22°C to 36°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=900.0, sunrise=6.0, sunset=18.5).tolist(),
+        "wind_speed_mean": 2.2,
+        "T_ground": 27.0,
+        "RH_mean": 45.0,
+    },
+    # --- Tamil Nadu Coastal (Chennai) ---
+    "chennai_summer": {
+        "name": "Chennai Coastal Peak Summer (May)",
+        "region": "Tamil Nadu Coastal (Chennai)",
+        "season": "Summer",
+        "data_source": "IMD Chennai Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=34.0, t_amp=6.0).tolist(),   # ~ 28°C to 40°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=920.0, sunrise=5.8, sunset=18.5).tolist(),
+        "wind_speed_mean": 3.0,
+        "T_ground": 32.0,
         "RH_mean": 70.0,
+    },
+    "chennai_winter": {
+        "name": "Chennai Coastal Mild Winter (Jan)",
+        "region": "Tamil Nadu Coastal (Chennai)",
+        "season": "Winter",
+        "data_source": "IMD Chennai Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=25.0, t_amp=5.0).tolist(),   # ~ 20°C to 30°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=780.0, sunrise=6.3, sunset=18.1).tolist(),
+        "wind_speed_mean": 2.8,
+        "T_ground": 24.0,
+        "RH_mean": 65.0,
+    },
+    # --- Telangana (Hyderabad) ---
+    "hyderabad_summer": {
+        "name": "Hyderabad Peak Summer (May)",
+        "region": "Telangana Semi-Arid (Hyderabad)",
+        "season": "Summer",
+        "data_source": "IMD Hyderabad Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=34.0, t_amp=8.0).tolist(),   # ~ 26°C to 42°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=950.0, sunrise=5.7, sunset=18.7).tolist(),
+        "wind_speed_mean": 2.6,
+        "T_ground": 32.0,
+        "RH_mean": 40.0,
+    },
+    "hyderabad_winter": {
+        "name": "Hyderabad Mild Winter (Jan)",
+        "region": "Telangana Semi-Arid (Hyderabad)",
+        "season": "Winter",
+        "data_source": "IMD Hyderabad Normals & NASA POWER",
+        "is_synthetic": True,
+        "T_amb_hourly": generate_diurnal_temp(t_mean=21.5, t_amp=7.5).tolist(),  # ~ 14°C to 29°C
+        "solar_hourly": generate_solar_profile(peak_irradiance=800.0, sunrise=6.4, sunset=18.1).tolist(),
+        "wind_speed_mean": 2.0,
+        "T_ground": 20.0,
+        "RH_mean": 45.0,
     },
 }
 
