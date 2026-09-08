@@ -1,0 +1,6 @@
+design_rank,surrogate_heating_kWh,physics_rerun_heating_kWh,surrogate_vs_physics_error_pct,ansys_status
+1,23.4,7.41,215.83,ANSYS solver unavailable — using physics-model validation.
+2,23.51,8.4,179.83,ANSYS solver unavailable — using physics-model validation.
+3,23.63,8.34,183.3,ANSYS solver unavailable — using physics-model validation.
+4,23.66,8.38,182.28,ANSYS solver unavailable — using physics-model validation.
+5,24.92,9.54,161.28,ANSYS solver unavailable — using physics-model validation.

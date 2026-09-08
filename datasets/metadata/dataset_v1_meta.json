@@ -1,0 +1,13 @@
+{
+  "dataset_version": "v1.0",
+  "generated_at": "2026-09-06 22:06:02",
+  "n_samples_per_scenario": 300,
+  "total_rows": 600,
+  "random_seed": 42,
+  "climate_scenarios": [
+    "winter",
+    "summer"
+  ],
+  "physics_engine": "Tier-1 Lumped Capacitance RC Network with 3-day spinup",
+  "filepath": "E:\\sheltrix\\datasets\\raw\\dataset_v1.csv"
+}
